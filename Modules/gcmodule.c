@@ -293,12 +293,27 @@ gc_list_move(PyGC_Head *node, PyGC_Head *list)
     _PyGCHead_SET_NEXT(node, list);
 }
 
+static void print_generation_objects(GCState *gcstate, int generation) {
+    PyGC_Head *head = GEN_HEAD(gcstate, generation);
+    printf("[DEBUG]Counting object details for %d generation\n", generation);
+    int counter = 0;
+    while (head) {
+        PyObject *o = FROM_GC(head);
+        head = GC_NEXT(head);
+
+        counter ++;
+    }
+    printf("[DEBUG] Total objects are %d\n", counter);
+}
+
 /* append list `from` onto list `to`; `from` becomes an empty list */
 static void
 gc_list_merge(PyGC_Head *from, PyGC_Head *to)
 {
     assert(from != to);
     if (!gc_list_is_empty(from)) {
+        // Lets print to and from generation
+
         PyGC_Head *to_tail = GC_PREV(to);
         PyGC_Head *from_head = GC_NEXT(from);
         PyGC_Head *from_tail = GC_PREV(from);
@@ -1214,7 +1229,7 @@ gc_collect_main(PyThreadState *tstate, int generation,
     PyGC_Head *gc;
     _PyTime_t t1 = 0;   /* initialize to prevent a compiler warning */
     GCState *gcstate = &tstate->interp->gc;
-
+    print_generation_objects(gcstate, generation);
     // gc_collect_main() must not be called before _PyGC_Init
     // or after _PyGC_Fini()
     assert(gcstate->garbage != NULL);
@@ -1237,7 +1252,9 @@ gc_collect_main(PyThreadState *tstate, int generation,
 
     /* merge younger generations with one we are currently collecting */
     for (i = 0; i < generation; i++) {
+        // print_generation_objects(gcstate, i);
         gc_list_merge(GEN_HEAD(gcstate, i), GEN_HEAD(gcstate, generation));
+
     }
 
     /* handy references */
@@ -1564,13 +1581,14 @@ static Py_ssize_t
 gc_collect_impl(PyObject *module, int generation)
 /*[clinic end generated code: output=b697e633043233c7 input=40720128b682d879]*/
 {
+    printf("[DEBUG] Garbage Collection invoked\n");
     PyThreadState *tstate = _PyThreadState_GET();
 
     if (generation < 0 || generation >= NUM_GENERATIONS) {
         _PyErr_SetString(tstate, PyExc_ValueError, "invalid generation");
         return -1;
     }
-
+    
     GCState *gcstate = &tstate->interp->gc;
     Py_ssize_t n;
     if (gcstate->collecting) {

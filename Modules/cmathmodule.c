@@ -801,6 +801,7 @@ cmath_sqrt_impl(PyObject *module, Py_complex z)
         r.imag = copysign(s, z.imag);
     }
     errno = 0;
+    printf("r.real = %f r.imag = %f\n", r.real, r.imag);
     return r;
 }
 
